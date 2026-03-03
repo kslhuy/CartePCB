@@ -1,0 +1,8 @@
+{
+	"InstallScripts" : 
+	[
+		"C:/Users/Quang Huy Nugyen/Documents/CartePCB/build/cmake_install.cmake",
+		"C:/Users/Quang Huy Nugyen/Documents/CartePCB/build/cmake/stm32cubemx/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

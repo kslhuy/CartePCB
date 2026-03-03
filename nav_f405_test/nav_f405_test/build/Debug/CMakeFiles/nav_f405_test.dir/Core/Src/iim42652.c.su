@@ -1,0 +1,8 @@
+C:/Users/Quang Huy Nugyen/Documents/nav_f405_test/nav_f405_test/Core/Src/iim42652.c:18:20:CS_Low	16	static
+C:/Users/Quang Huy Nugyen/Documents/nav_f405_test/nav_f405_test/Core/Src/iim42652.c:23:20:CS_High	16	static
+C:/Users/Quang Huy Nugyen/Documents/nav_f405_test/nav_f405_test/Core/Src/iim42652.c:32:9:IIM42652_ReadReg	32	static
+C:/Users/Quang Huy Nugyen/Documents/nav_f405_test/nav_f405_test/Core/Src/iim42652.c:44:6:IIM42652_WriteReg	24	static
+C:/Users/Quang Huy Nugyen/Documents/nav_f405_test/nav_f405_test/Core/Src/iim42652.c:53:6:IIM42652_ReadRegs	32	static
+C:/Users/Quang Huy Nugyen/Documents/nav_f405_test/nav_f405_test/Core/Src/iim42652.c:68:9:IIM42652_ReadWhoAmI	16	static
+C:/Users/Quang Huy Nugyen/Documents/nav_f405_test/nav_f405_test/Core/Src/iim42652.c:73:19:IIM42652_Init	32	static
+C:/Users/Quang Huy Nugyen/Documents/nav_f405_test/nav_f405_test/Core/Src/iim42652.c:119:19:IIM42652_ReadSensorData	32	static

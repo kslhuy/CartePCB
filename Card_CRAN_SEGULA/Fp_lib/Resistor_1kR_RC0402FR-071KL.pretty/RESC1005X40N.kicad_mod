@@ -1,0 +1,170 @@
+(footprint "RESC1005X40N"
+	(version 20240108)
+	(generator "pcbnew")
+	(generator_version "8.0")
+	(layer "F.Cu")
+	(property "Reference" "REF**"
+		(at 0.782 -1.1564 0)
+		(layer "F.SilkS")
+		(uuid "b1c41bb3-c3b0-4a2a-8df9-a4a98df4c594")
+		(effects
+			(font
+				(size 0.64 0.64)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "RESC1005X40N"
+		(at 3.6268 1.0936 0)
+		(layer "F.Fab")
+		(uuid "d782f99c-1278-444d-842c-c9591acb88a6")
+		(effects
+			(font
+				(size 0.64 0.64)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Footprint" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "9a4460d4-d247-444f-9d91-2b53015212aa")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "2801429c-61d3-4b0d-ad9c-712da13e0006")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "365945d6-a493-46c3-928e-9634e736cbe5")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr smd)
+	(fp_line
+		(start -0.95 -0.55)
+		(end 0.95 -0.55)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "26e4f5fe-2d1b-4559-a896-359b39befff8")
+	)
+	(fp_line
+		(start -0.95 0.55)
+		(end -0.95 -0.55)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "db3d77ab-5595-4960-987c-e2a10b05f53e")
+	)
+	(fp_line
+		(start 0.95 -0.55)
+		(end 0.95 0.55)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "f2b5ec24-7c1b-4214-b219-a7626e22d6bd")
+	)
+	(fp_line
+		(start 0.95 0.55)
+		(end -0.95 0.55)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "e498ec1b-2eff-49d2-8690-5b802584adca")
+	)
+	(fp_line
+		(start -0.5 -0.25)
+		(end 0.5 -0.25)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "d8045f5c-8515-43d2-92c8-22f484215f94")
+	)
+	(fp_line
+		(start -0.5 0.25)
+		(end -0.5 -0.25)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "cbee77ba-17a0-4bc6-af4e-7cfb4fdebbc8")
+	)
+	(fp_line
+		(start 0.5 -0.25)
+		(end 0.5 0.25)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "0918c70c-3926-41a3-b8bc-c3367c3fb38a")
+	)
+	(fp_line
+		(start 0.5 0.25)
+		(end -0.5 0.25)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "e4b529b1-4665-4bf5-8ca0-be469fdb69a7")
+	)
+	(pad "1" smd rect
+		(at -0.43 0)
+		(size 0.54 0.6)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(solder_mask_margin 0.102)
+		(uuid "146acd3d-7df6-4ef6-8c1c-456756fd8139")
+	)
+	(pad "2" smd rect
+		(at 0.43 0)
+		(size 0.54 0.6)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(solder_mask_margin 0.102)
+		(uuid "28b7539c-c328-4409-a81f-fee6f702c471")
+	)
+	(model "${KIPRJMOD}/Fp_lib/Resistor_1kR_RC0402FR-071KL.pretty/RC0402FR-071KL.step"
+		(offset
+			(xyz 0 0 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz -90 0 0)
+		)
+	)
+)

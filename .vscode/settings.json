@@ -1,0 +1,6 @@
+{
+    "cmake.sourceDirectory": [
+        "${workspaceFolder}/com_h753/com_H753VIT",
+        "${workspaceFolder}/nav_f405_test/nav_f405_test"
+    ]
+}

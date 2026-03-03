@@ -1,0 +1,172 @@
+(footprint "CAPC1005X55N"
+	(version 20240108)
+	(generator "pcbnew")
+	(generator_version "8.0")
+	(layer "F.Cu")
+	(property "Reference" "REF**"
+		(at 1.082 -1.2564 0)
+		(layer "F.SilkS")
+		(uuid "3b4ce3f8-f195-4a93-b357-cf632807d220")
+		(effects
+			(font
+				(size 0.64 0.64)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "CAPC1005X55N"
+		(at 3.9268 1.2564 0)
+		(layer "F.Fab")
+		(uuid "d2717f0d-b974-4b77-9da8-75a51b7eaf68")
+		(effects
+			(font
+				(size 0.64 0.64)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Footprint" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "cbac0dda-d2bc-4141-9928-24137f98133a")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "2cf92fbc-631d-4a29-9396-73cff91a7114")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "11362b96-134e-4ca2-b039-c212a2b90ea2")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr smd)
+	(fp_line
+		(start -0.95 -0.55)
+		(end -0.95 0.55)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "8a96053e-328e-45f0-8d4c-97740c94a369")
+	)
+	(fp_line
+		(start -0.95 0.55)
+		(end 0.95 0.55)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "6a36cc10-aa71-46d4-abc8-592c7556e433")
+	)
+	(fp_line
+		(start 0.95 -0.55)
+		(end -0.95 -0.55)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "d32ddf62-150a-4e24-b0b2-7f5941c35a55")
+	)
+	(fp_line
+		(start 0.95 0.55)
+		(end 0.95 -0.55)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "d884f9d4-3b37-41ff-9b33-6850da6b8276")
+	)
+	(fp_line
+		(start -0.5 -0.25)
+		(end -0.5 0.25)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "e93c3272-6994-42eb-ba80-47fdc5705d6a")
+	)
+	(fp_line
+		(start -0.5 0.25)
+		(end 0.5 0.25)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "78b49046-10e6-49a8-91ba-c8738abd4349")
+	)
+	(fp_line
+		(start 0.5 -0.25)
+		(end -0.5 -0.25)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "1c09e5f2-e5cf-4187-95f9-610125e4e3d2")
+	)
+	(fp_line
+		(start 0.5 0.25)
+		(end 0.5 -0.25)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "48ece00e-4d96-4dfe-8cc1-61496d60154d")
+	)
+	(pad "1" smd roundrect
+		(at -0.405 0)
+		(size 0.59 0.6)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(roundrect_rratio 0.265)
+		(solder_mask_margin 0.102)
+		(uuid "78410e7f-b884-4ca0-b2e6-348a07f1fcba")
+	)
+	(pad "2" smd roundrect
+		(at 0.405 0)
+		(size 0.59 0.6)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(roundrect_rratio 0.265)
+		(solder_mask_margin 0.102)
+		(uuid "be83745a-c522-4e68-9bab-c3be8c3be105")
+	)
+	(model "${KIPRJMOD}/Fp_lib/Capacitor_10nF_C0402C103J3RECAUTO.pretty/C0402C103J3RECAUTO.step"
+		(offset
+			(xyz -0.53 -0.28 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz -90 0 0)
+		)
+	)
+)
