@@ -1,0 +1,15 @@
+C:/Users/Quang Huy Nugyen/Documents/CartePCB/com_h753/com_H753VIT/Core/Src/main.c:74:13:Debug_Print	16	static
+C:/Users/Quang Huy Nugyen/Documents/CartePCB/com_h753/com_H753VIT/Core/Src/main.c:103:16:IMU_CalcXOR	24	static
+C:/Users/Quang Huy Nugyen/Documents/CartePCB/com_h753/com_H753VIT/Core/Src/main.c:112:12:IMU_ValidatePacket	16	static
+C:/Users/Quang Huy Nugyen/Documents/CartePCB/com_h753/com_H753VIT/Core/Src/main.c:121:13:IMU_ParsePacket	16	static
+C:/Users/Quang Huy Nugyen/Documents/CartePCB/com_h753/com_H753VIT/Core/Src/main.c:134:13:IMU_PrintData	72	static
+C:/Users/Quang Huy Nugyen/Documents/CartePCB/com_h753/com_H753VIT/Core/Src/main.c:154:5:main	136	static
+C:/Users/Quang Huy Nugyen/Documents/CartePCB/com_h753/com_H753VIT/Core/Src/main.c:329:6:SystemClock_Config	120	static
+C:/Users/Quang Huy Nugyen/Documents/CartePCB/com_h753/com_H753VIT/Core/Src/main.c:388:13:MX_SPI3_Init	8	static
+C:/Users/Quang Huy Nugyen/Documents/CartePCB/com_h753/com_H753VIT/Core/Src/main.c:436:13:MX_UART4_Init	8	static
+C:/Users/Quang Huy Nugyen/Documents/CartePCB/com_h753/com_H753VIT/Core/Src/main.c:484:13:MX_USART2_UART_Init	8	static
+C:/Users/Quang Huy Nugyen/Documents/CartePCB/com_h753/com_H753VIT/Core/Src/main.c:532:13:MX_USART3_UART_Init	8	static
+C:/Users/Quang Huy Nugyen/Documents/CartePCB/com_h753/com_H753VIT/Core/Src/main.c:568:13:MX_GPIO_Init	48	static
+C:/Users/Quang Huy Nugyen/Documents/CartePCB/com_h753/com_H753VIT/Core/Src/main.c:607:6:HAL_UART_RxCpltCallback	32	static
+C:/Users/Quang Huy Nugyen/Documents/CartePCB/com_h753/com_H753VIT/Core/Src/main.c:642:6:MPU_Config	24	static
+C:/Users/Quang Huy Nugyen/Documents/CartePCB/com_h753/com_H753VIT/Core/Src/main.c:673:6:Error_Handler	4	static

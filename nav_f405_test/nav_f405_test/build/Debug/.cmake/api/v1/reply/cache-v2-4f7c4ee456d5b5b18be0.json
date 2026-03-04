@@ -179,7 +179,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "c:/Users/Quang Huy Nugyen/Documents/nav_f405_test/nav_f405_test/build/Debug"
+			"value" : "c:/Users/Quang Huy Nugyen/Documents/CartePCB/nav_f405_test/nav_f405_test/build/Debug"
 		},
 		{
 			"name" : "CMAKE_CACHE_MAJOR_VERSION",
@@ -635,7 +635,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "C:/Users/Quang Huy Nugyen/Documents/nav_f405_test/nav_f405_test/build/Debug/CMakeFiles/pkgRedirects"
+			"value" : "C:/Users/Quang Huy Nugyen/Documents/CartePCB/nav_f405_test/nav_f405_test/build/Debug/CMakeFiles/pkgRedirects"
 		},
 		{
 			"name" : "CMAKE_GENERATOR",
@@ -695,7 +695,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "C:/Users/Quang Huy Nugyen/Documents/nav_f405_test/nav_f405_test"
+			"value" : "C:/Users/Quang Huy Nugyen/Documents/CartePCB/nav_f405_test/nav_f405_test"
 		},
 		{
 			"name" : "CMAKE_INSTALL_PREFIX",
@@ -1207,11 +1207,11 @@
 			[
 				{
 					"name" : "HELPSTRING",
-					"value" : "No help, variable specified on the command line."
+					"value" : "The CMake toolchain file"
 				}
 			],
-			"type" : "UNINITIALIZED",
-			"value" : "C:/Users/Quang Huy Nugyen/Documents/nav_f405_test/nav_f405_test/cmake/gcc-arm-none-eabi.cmake"
+			"type" : "FILEPATH",
+			"value" : "C:/Users/Quang Huy Nugyen/Documents/CartePCB/nav_f405_test/nav_f405_test/cmake/gcc-arm-none-eabi.cmake"
 		},
 		{
 			"name" : "CMAKE_VERBOSE_MAKEFILE",
@@ -1239,7 +1239,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "C:/Users/Quang Huy Nugyen/Documents/nav_f405_test/nav_f405_test/build/Debug"
+			"value" : "C:/Users/Quang Huy Nugyen/Documents/CartePCB/nav_f405_test/nav_f405_test/build/Debug"
 		},
 		{
 			"name" : "nav_f405_test_IS_TOP_LEVEL",
@@ -1263,7 +1263,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "C:/Users/Quang Huy Nugyen/Documents/nav_f405_test/nav_f405_test"
+			"value" : "C:/Users/Quang Huy Nugyen/Documents/CartePCB/nav_f405_test/nav_f405_test"
 		}
 	],
 	"kind" : "cache",

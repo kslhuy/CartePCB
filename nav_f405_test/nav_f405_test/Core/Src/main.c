@@ -82,6 +82,12 @@ static IIM42652_Data_t   imu_data;
 static uint8_t           spi3_tx_buf[2][NAV_PKT_SIZE];
 static volatile uint8_t  spi3_ready_idx = 0;  /* index of latest COMPLETE packet */
 
+/* Dummy RX buffer — absorbs master MOSI data, prevents OVR */
+static uint8_t           spi3_rx_dummy[NAV_PKT_SIZE];
+
+/* UART6 TX packet buffer (NAV → COM via UART) */
+static uint8_t           uart6_tx_buf[NAV_PKT_SIZE];
+
 /* UART debug buffer */
 static char uart_buf[128];
 
@@ -129,6 +135,83 @@ static void NAV_PackSpiBuffer(uint8_t *buf, const IIM42652_Data_t *d, uint8_t st
     for (int i = 0; i < 16; i++) chk ^= buf[i];
     buf[16] = chk;
     buf[17] = NAV_PKT_FOOTER;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  Bare-metal DMA for SPI3 slave TX/RX
+ *  DMA1 Stream 5 Ch 0 = SPI3_TX   (memory → SPI3->DR)
+ *  DMA1 Stream 0 Ch 0 = SPI3_RX   (SPI3->DR → memory, absorbs MOSI)
+ * ═══════════════════════════════════════════════════════════════════════════*/
+
+/**
+ * @brief  One-time DMA + SPI3 setup.  Call AFTER MX_SPI3_Init().
+ */
+static void SPI3_DMA_Init(void)
+{
+    __HAL_RCC_DMA1_CLK_ENABLE();
+
+    /* ── TX: DMA1 Stream 5, Channel 0 ── */
+    DMA1_Stream5->CR  = 0;
+    while (DMA1_Stream5->CR & DMA_SxCR_EN);          /* wait disabled     */
+    DMA1_Stream5->CR  = (0u  << DMA_SxCR_CHSEL_Pos)  /* channel 0         */
+                      | DMA_SxCR_MINC                 /* memory increment  */
+                      | (1u  << DMA_SxCR_DIR_Pos);    /* mem → periph      */
+    DMA1_Stream5->PAR = (uint32_t)&SPI3->DR;
+    DMA1_Stream5->FCR = 0;                            /* direct mode       */
+
+    /* ── RX: DMA1 Stream 0, Channel 0 (absorbs MOSI → no OVR) ── */
+    DMA1_Stream0->CR  = 0;
+    while (DMA1_Stream0->CR & DMA_SxCR_EN);
+    DMA1_Stream0->CR  = (0u  << DMA_SxCR_CHSEL_Pos)
+                      | DMA_SxCR_MINC
+                      | (0u  << DMA_SxCR_DIR_Pos);    /* periph → mem      */
+    DMA1_Stream0->PAR = (uint32_t)&SPI3->DR;
+    DMA1_Stream0->FCR = 0;
+
+    /* Enable SPI3 DMA requests */
+    SPI3->CR2 |= SPI_CR2_TXDMAEN | SPI_CR2_RXDMAEN;
+}
+
+/**
+ * @brief  (Re-)arm SPI3 slave DMA with a fresh TX buffer.
+ *         Call from EXTI callback or init.  Safe to call from ISR.
+ */
+static void SPI3_DMA_Arm(const uint8_t *tx_buf, uint8_t *rx_buf, uint16_t len)
+{
+    /* 1) Disable both DMA streams */
+    DMA1_Stream5->CR &= ~DMA_SxCR_EN;
+    DMA1_Stream0->CR &= ~DMA_SxCR_EN;
+    while (DMA1_Stream5->CR & DMA_SxCR_EN);
+    while (DMA1_Stream0->CR & DMA_SxCR_EN);
+
+    /* 2) Clear all DMA status flags */
+    DMA1->HIFCR = DMA_HIFCR_CTCIF5 | DMA_HIFCR_CHTIF5
+                | DMA_HIFCR_CTEIF5 | DMA_HIFCR_CDMEIF5 | DMA_HIFCR_CFEIF5;
+    DMA1->LIFCR = DMA_LIFCR_CTCIF0 | DMA_LIFCR_CHTIF0
+                | DMA_LIFCR_CTEIF0 | DMA_LIFCR_CDMEIF0 | DMA_LIFCR_CFEIF0;
+
+    /* 3) Disable SPI so we can reset the TX/RX path cleanly */
+    SPI3->CR1 &= ~SPI_CR1_SPE;
+
+    /* 4) Clear any pending OVR (read DR then SR) */
+    (void)SPI3->DR;
+    (void)SPI3->SR;
+
+    /* 5) Configure TX DMA */
+    DMA1_Stream5->M0AR = (uint32_t)tx_buf;
+    DMA1_Stream5->NDTR = len;
+
+    /* 6) Configure RX DMA */
+    DMA1_Stream0->M0AR = (uint32_t)rx_buf;
+    DMA1_Stream0->NDTR = len;
+
+    /* 7) Enable RX stream first (so it's ready to drain), then TX */
+    DMA1_Stream0->CR |= DMA_SxCR_EN;
+    DMA1_Stream5->CR |= DMA_SxCR_EN;
+
+    /* 8) Re-enable SPI — TXE fires immediately, DMA loads byte 0 into DR
+     *    before master pulls CS LOW.                                      */
+    SPI3->CR1 |= SPI_CR1_SPE;
 }
 
 /* USER CODE END 0 */
@@ -200,15 +283,11 @@ int main(void)
   spi3_tx_buf[1][0]  = NAV_PKT_HEADER;
   spi3_tx_buf[1][17] = NAV_PKT_FOOTER;
 
-  /* Enable SPI3 interrupt (needed for HAL_SPI_Transmit_IT in slave mode) */
-  HAL_NVIC_SetPriority(SPI3_IRQn, 2, 0);
-  HAL_NVIC_EnableIRQ(SPI3_IRQn);
-
-  /* ── PA15 as SPI3_NSS (hardware) + EXTI rising edge for TX re-arm ── */
+  /* ── PA15 as SPI3_NSS (hardware) + EXTI rising edge for DMA re-arm ── */
   {
       /* 1) Configure PA15 as AF6 = SPI3_NSS (hardware slave-select).
-       *    The SPI peripheral now tracks this pin directly and resets
-       *    the shift register / bit counter on every CS deassertion.   */
+       *    The SPI peripheral tracks this pin and resets the shift
+       *    register / bit counter on every CS deassertion.              */
       GPIO_InitTypeDef gpio = {0};
       gpio.Pin       = GPIO_PIN_15;
       gpio.Mode      = GPIO_MODE_AF_PP;
@@ -228,9 +307,13 @@ int main(void)
       HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
   }
 
-  /* Arm SPI3 slave with buffer 0 — ready for master (COM/H753) to clock */
+  /* ── Set up bare-metal DMA for SPI3 slave (bypasses HAL completely) ── */
+  SPI3_DMA_Init();
+
+  /* Arm SPI3 slave with buffer 0 — DMA will feed bytes to SPI DR in
+   * hardware with zero CPU involvement.  No more IRQ latency issues.   */
   spi3_ready_idx = 0;
-  HAL_SPI_Transmit_IT(&hspi3, spi3_tx_buf[0], NAV_PKT_SIZE);
+  SPI3_DMA_Arm(spi3_tx_buf[0], spi3_rx_dummy, NAV_PKT_SIZE);
 
   /* USER CODE END 2 */
 
@@ -246,6 +329,18 @@ int main(void)
         uint8_t wr = spi3_ready_idx ^ 1;          /* write to other buffer   */
         NAV_PackSpiBuffer(spi3_tx_buf[wr], &imu_data, 0x01);
         spi3_ready_idx = wr;                       /* atomic 8-bit store      */
+    }
+
+    /* 2b) Also send the same IMU packet over USART6 → COM H753 USART3 */
+    {
+        static uint32_t last_uart_tx = 0;
+        uint32_t now_u = HAL_GetTick();
+        if (now_u - last_uart_tx >= 10u)  /* ~100 Hz UART TX rate */
+        {
+            last_uart_tx = now_u;
+            NAV_PackSpiBuffer(uart6_tx_buf, &imu_data, 0x01);
+            HAL_UART_Transmit(&huart6, uart6_tx_buf, NAV_PKT_SIZE, 5);
+        }
     }
 
     /* 3) Heartbeat LED (PB14) + debug UART every 500 ms */
@@ -266,7 +361,7 @@ int main(void)
         }
     }
 
-    HAL_Delay(1);  /* ~1 kHz loop rate */
+    /* No delay — read IMU as fast as possible (8 kHz ODR) */
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -408,7 +503,7 @@ static void MX_SPI3_Init(void)
   /* USER CODE END SPI3_Init 1 */
   /* SPI3 parameter configuration*/
   hspi3.Instance = SPI3;
-  hspi3.Init.Mode = SPI_MODE_MASTER;
+  hspi3.Init.Mode = SPI_MODE_SLAVE;          /* SLAVE — clocked by COM H753 master */
   hspi3.Init.Direction = SPI_DIRECTION_2LINES;
   hspi3.Init.DataSize = SPI_DATASIZE_8BIT;
   hspi3.Init.CLKPolarity = SPI_POLARITY_LOW;
@@ -478,7 +573,7 @@ static void MX_USART6_UART_Init(void)
 
   /* USER CODE END USART6_Init 1 */
   huart6.Instance = USART6;
-  huart6.Init.BaudRate = 115200;
+  huart6.Init.BaudRate = 921600;
   huart6.Init.WordLength = UART_WORDLENGTH_8B;
   huart6.Init.StopBits = UART_STOPBITS_1;
   huart6.Init.Parity = UART_PARITY_NONE;
@@ -538,18 +633,14 @@ static void MX_GPIO_Init(void)
 
 /**
  * @brief  EXTI callback — PA15 rising edge = CS went HIGH (master done).
- *         Abort any partial SPI3 transfer and re-arm from byte 0 with latest data.
- *         This guarantees frame alignment for every master read.
+ *         Re-arm DMA from byte 0 with latest IMU data.
+ *         DMA handles all byte-level TX/RX in hardware — no HAL involved.
  */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
     if (GPIO_Pin == GPIO_PIN_15)
     {
-        /* Abort any ongoing/partial SPI3 slave transfer */
-        HAL_SPI_Abort(&hspi3);
-
-        /* Re-arm with the latest complete packet buffer */
-        HAL_SPI_Transmit_IT(&hspi3, spi3_tx_buf[spi3_ready_idx], NAV_PKT_SIZE);
+        SPI3_DMA_Arm(spi3_tx_buf[spi3_ready_idx], spi3_rx_dummy, NAV_PKT_SIZE);
     }
 }
 

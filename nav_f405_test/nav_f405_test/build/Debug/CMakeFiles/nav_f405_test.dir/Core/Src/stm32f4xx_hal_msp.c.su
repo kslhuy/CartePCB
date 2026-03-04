@@ -1,5 +1,7 @@
-C:/Users/Quang Huy Nugyen/Documents/nav_f405_test/nav_f405_test/Core/Src/stm32f4xx_hal_msp.c:62:6:HAL_MspInit	16	static
-C:/Users/Quang Huy Nugyen/Documents/nav_f405_test/nav_f405_test/Core/Src/stm32f4xx_hal_msp.c:85:6:HAL_SPI_MspInit	56	static
-C:/Users/Quang Huy Nugyen/Documents/nav_f405_test/nav_f405_test/Core/Src/stm32f4xx_hal_msp.c:150:6:HAL_SPI_MspDeInit	16	static
-C:/Users/Quang Huy Nugyen/Documents/nav_f405_test/nav_f405_test/Core/Src/stm32f4xx_hal_msp.c:201:6:HAL_UART_MspInit	56	static
-C:/Users/Quang Huy Nugyen/Documents/nav_f405_test/nav_f405_test/Core/Src/stm32f4xx_hal_msp.c:261:6:HAL_UART_MspDeInit	16	static
+C:/Users/Quang Huy Nugyen/Documents/CartePCB/nav_f405_test/nav_f405_test/Core/Src/stm32f4xx_hal_msp.c:62:6:HAL_MspInit	16	static
+C:/Users/Quang Huy Nugyen/Documents/CartePCB/nav_f405_test/nav_f405_test/Core/Src/stm32f4xx_hal_msp.c:85:6:HAL_I2C_MspInit	48	static
+C:/Users/Quang Huy Nugyen/Documents/CartePCB/nav_f405_test/nav_f405_test/Core/Src/stm32f4xx_hal_msp.c:122:6:HAL_I2C_MspDeInit	16	static
+C:/Users/Quang Huy Nugyen/Documents/CartePCB/nav_f405_test/nav_f405_test/Core/Src/stm32f4xx_hal_msp.c:153:6:HAL_SPI_MspInit	56	static
+C:/Users/Quang Huy Nugyen/Documents/CartePCB/nav_f405_test/nav_f405_test/Core/Src/stm32f4xx_hal_msp.c:225:6:HAL_SPI_MspDeInit	16	static
+C:/Users/Quang Huy Nugyen/Documents/CartePCB/nav_f405_test/nav_f405_test/Core/Src/stm32f4xx_hal_msp.c:278:6:HAL_UART_MspInit	56	static
+C:/Users/Quang Huy Nugyen/Documents/CartePCB/nav_f405_test/nav_f405_test/Core/Src/stm32f4xx_hal_msp.c:338:6:HAL_UART_MspDeInit	16	static

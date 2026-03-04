@@ -45,6 +45,7 @@ SPI_HandleTypeDef hspi3;
 
 UART_HandleTypeDef huart4;
 UART_HandleTypeDef huart2;
+UART_HandleTypeDef huart3;   /* USART3: NAV link (PD8 TX, PD9 RX) */
 
 /* USER CODE BEGIN PV */
 
@@ -57,6 +58,7 @@ static void MX_GPIO_Init(void);
 static void MX_SPI3_Init(void);
 static void MX_UART4_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_USART3_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -87,6 +89,13 @@ static const uint8_t spi_tx_dummy[IMU_PKT_LEN] = {0};
 
 /* RX buffer for one SPI packet */
 static uint8_t spi_rx_buf[IMU_PKT_LEN];
+
+/* ---------- UART3 (NAV link) RX state machine ---------- */
+static uint8_t  uart3_rx_byte;                /* single-byte IT target       */
+static uint8_t  uart3_pkt_buf[IMU_PKT_LEN];   /* reassembly buffer           */
+static uint8_t  uart3_pkt_idx = 0;            /* next write position         */
+static uint8_t  uart3_pkt_ready[IMU_PKT_LEN]; /* latest validated packet     */
+static volatile uint8_t uart3_new_pkt = 0;    /* flag: 1 = new packet ready  */
 
 /* ---------- Packet helpers ---------- */
 
@@ -173,6 +182,7 @@ int main(void)
   MX_SPI3_Init();
   MX_UART4_Init();
   MX_USART2_UART_Init();
+  MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
 
   /* Make sure CS idles HIGH before first transfer */
@@ -183,6 +193,7 @@ int main(void)
   Debug_Print("  COM H753 - IMU SPI Receiver\r\n");
   Debug_Print("========================================\r\n");
   Debug_Print("[OK] SPI3 Master  (PC10/11/12, PA15 CS)\r\n");
+  Debug_Print("[OK] USART3 RX  (PD9) ← NAV USART6_TX\r\n");
   Debug_Print("[OK] UART4 debug console ready\r\n");
   Debug_Print("[OK] Polling NAV with CS-sync\r\n");
 
@@ -199,10 +210,17 @@ int main(void)
   Debug_Print("[OK] Sync pulse sent\r\n");
   Debug_Print("----------------------------------------\r\n\r\n");
 
-  uint32_t pkt_seq    = 0;   /* good-packet counter  */
-  uint32_t err_count  = 0;   /* validation errors    */
-  uint32_t poll_count = 0;   /* total polls          */
+  /* Start USART3 single-byte IT reception for NAV UART link */
+  HAL_UART_Receive_IT(&huart3, &uart3_rx_byte, 1);
+
+  uint32_t pkt_seq    = 0;   /* good-packet counter (SPI)   */
+  uint32_t err_count  = 0;   /* validation errors   (SPI)   */
+  uint32_t poll_count = 0;   /* total polls         (SPI)   */
+  uint32_t last_print_spi  = 0; /* last SPI debug-print tick  */
+  uint32_t last_print_uart = 0; /* last UART debug-print tick */
+  uint32_t uart_pkt_seq = 0; /* good-packet counter (UART)  */
   IMU_Data_t imu;
+  IMU_Data_t imu_uart;       /* separate struct for UART    */
 
   /* USER CODE END 2 */
 
@@ -235,35 +253,72 @@ int main(void)
     if (!IMU_ValidatePacket(spi_rx_buf))
     {
       err_count++;
-      snprintf(debug_buf, sizeof(debug_buf),
-               "[poll=%lu] BAD PKT  hdr=0x%02X ftr=0x%02X xor=0x%02X (exp 0x%02X)  errs=%lu\r\n",
-               (unsigned long)poll_count,
-               spi_rx_buf[0], spi_rx_buf[17],
-               IMU_CalcXOR(spi_rx_buf, 16), spi_rx_buf[16],
-               (unsigned long)err_count);
-      Debug_Print(debug_buf);
-
-      /* Hex dump first 10 bad packets so we can see the real alignment */
-      if (err_count <= 10)
+      /* Only print errors at most every 200 ms to avoid UART flood */
+      uint32_t now = HAL_GetTick();
+      if (now - last_print_spi >= 200)
       {
-        Debug_Print("  RAW:");
-        for (uint8_t i = 0; i < IMU_PKT_LEN; i++)
+        last_print_spi = now;
+        snprintf(debug_buf, sizeof(debug_buf),
+                 "[poll=%lu] BAD PKT  hdr=0x%02X ftr=0x%02X xor=0x%02X (exp 0x%02X)  errs=%lu\r\n",
+                 (unsigned long)poll_count,
+                 spi_rx_buf[0], spi_rx_buf[17],
+                 IMU_CalcXOR(spi_rx_buf, 16), spi_rx_buf[16],
+                 (unsigned long)err_count);
+        Debug_Print(debug_buf);
+
+        /* Hex dump first 10 bad packets so we can see the real alignment */
+        if (err_count <= 10)
         {
-          snprintf(debug_buf, sizeof(debug_buf), " %02X", spi_rx_buf[i]);
-          Debug_Print(debug_buf);
+          Debug_Print("  RAW:");
+          for (uint8_t i = 0; i < IMU_PKT_LEN; i++)
+          {
+            snprintf(debug_buf, sizeof(debug_buf), " %02X", spi_rx_buf[i]);
+            Debug_Print(debug_buf);
+          }
+          Debug_Print("\r\n");
         }
-        Debug_Print("\r\n");
       }
     }
     else
     {
-      /* Packet valid — parse and print */
+      /* Packet valid — parse */
       pkt_seq++;
       IMU_ParsePacket(spi_rx_buf, &imu);
-      IMU_PrintData(pkt_seq, &imu);
+
+      /* Print at most every 100 ms (~10 Hz) to not saturate UART */
+      uint32_t now = HAL_GetTick();
+      if (now - last_print_spi >= 100)
+      {
+        last_print_spi = now;
+        IMU_PrintData(pkt_seq, &imu);
+      }
     }
 
-    HAL_Delay(100);   /* poll at ~10 Hz */
+    HAL_Delay(1);   /* poll at ~1 kHz — data always fresh */
+
+    /* ======== UART-based IMU reception (USART3 ← NAV USART6) ======== */
+    if (uart3_new_pkt)
+    {
+      uart3_new_pkt = 0;
+      if (IMU_ValidatePacket(uart3_pkt_ready))
+      {
+        uart_pkt_seq++;
+        IMU_ParsePacket(uart3_pkt_ready, &imu_uart);
+
+        uint32_t now2 = HAL_GetTick();
+        if (now2 - last_print_uart >= 100)
+        {
+          last_print_uart = now2;
+          snprintf(debug_buf, sizeof(debug_buf),
+            "[UART %lu] st=0x%02X  AX=%6d AY=%6d AZ=%6d GX=%6d GY=%6d GZ=%6d T=%d\r\n",
+            (unsigned long)uart_pkt_seq, imu_uart.status,
+            imu_uart.ax, imu_uart.ay, imu_uart.az,
+            imu_uart.gx, imu_uart.gy, imu_uart.gz,
+            imu_uart.temp);
+          Debug_Print(debug_buf);
+        }
+      }
+    }
   }
   /* USER CODE END 3 */
 }
@@ -349,18 +404,18 @@ static void MX_SPI3_Init(void)
   hspi3.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi3.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi3.Init.NSS = SPI_NSS_SOFT;
-  hspi3.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
+  hspi3.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;   /* 192/32 = 6 MHz SPI clock */
   hspi3.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi3.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi3.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
   hspi3.Init.CRCPolynomial = 0x0;
-  hspi3.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
+  hspi3.Init.NSSPMode = SPI_NSS_PULSE_DISABLE;
   hspi3.Init.NSSPolarity = SPI_NSS_POLARITY_LOW;
   hspi3.Init.FifoThreshold = SPI_FIFO_THRESHOLD_01DATA;
   hspi3.Init.TxCRCInitializationPattern = SPI_CRC_INITIALIZATION_ALL_ZERO_PATTERN;
   hspi3.Init.RxCRCInitializationPattern = SPI_CRC_INITIALIZATION_ALL_ZERO_PATTERN;
   hspi3.Init.MasterSSIdleness = SPI_MASTER_SS_IDLENESS_00CYCLE;
-  hspi3.Init.MasterInterDataIdleness = SPI_MASTER_INTERDATA_IDLENESS_00CYCLE;
+  hspi3.Init.MasterInterDataIdleness = SPI_MASTER_INTERDATA_IDLENESS_04CYCLE;
   hspi3.Init.MasterReceiverAutoSusp = SPI_MASTER_RX_AUTOSUSP_DISABLE;
   hspi3.Init.MasterKeepIOState = SPI_MASTER_KEEP_IO_STATE_DISABLE;
   hspi3.Init.IOSwap = SPI_IO_SWAP_DISABLE;
@@ -471,6 +526,42 @@ static void MX_USART2_UART_Init(void)
 }
 
 /**
+  * @brief USART3 Initialization Function (NAV link: PD8=TX, PD9=RX)
+  * @param None
+  * @retval None
+  */
+static void MX_USART3_UART_Init(void)
+{
+  huart3.Instance = USART3;
+  huart3.Init.BaudRate = 921600;
+  huart3.Init.WordLength = UART_WORDLENGTH_8B;
+  huart3.Init.StopBits = UART_STOPBITS_1;
+  huart3.Init.Parity = UART_PARITY_NONE;
+  huart3.Init.Mode = UART_MODE_TX_RX;
+  huart3.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart3.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart3.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart3.Init.ClockPrescaler = UART_PRESCALER_DIV1;
+  huart3.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetTxFifoThreshold(&huart3, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetRxFifoThreshold(&huart3, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_DisableFifoMode(&huart3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -489,7 +580,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_SET);   /* CS idle HIGH */
 
   /*Configure GPIO pin : PA15 */
   GPIO_InitStruct.Pin = GPIO_PIN_15;
@@ -512,6 +603,38 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+/* ---------- USART3 RX callback (single-byte IT, reassembles packets) ---------- */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  if (huart->Instance == USART3)
+  {
+    uint8_t b = uart3_rx_byte;
+
+    if (uart3_pkt_idx == 0)
+    {
+      /* Waiting for header */
+      if (b == IMU_HEADER)
+        uart3_pkt_buf[uart3_pkt_idx++] = b;
+      /* else discard */
+    }
+    else
+    {
+      uart3_pkt_buf[uart3_pkt_idx++] = b;
+
+      if (uart3_pkt_idx >= IMU_PKT_LEN)
+      {
+        /* Full packet received — copy to ready buffer */
+        memcpy(uart3_pkt_ready, uart3_pkt_buf, IMU_PKT_LEN);
+        uart3_new_pkt = 1;
+        uart3_pkt_idx = 0;
+      }
+    }
+
+    /* Re-arm for next byte */
+    HAL_UART_Receive_IT(&huart3, &uart3_rx_byte, 1);
+  }
+}
 
 /* USER CODE END 4 */
 

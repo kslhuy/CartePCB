@@ -7,7 +7,7 @@
 				{
 					"directoryIndex" : 1,
 					"id" : "stm32cubemx::@768a070a0fe75716b479",
-					"jsonFile" : "target-stm32cubemx-Debug-e47abf8825e8b5b381a3.json",
+					"jsonFile" : "target-stm32cubemx-Debug-00f65d3609f9699d32c3.json",
 					"name" : "stm32cubemx",
 					"projectIndex" : 0
 				}
@@ -78,14 +78,14 @@
 				{
 					"directoryIndex" : 1,
 					"id" : "STM32_Drivers::@768a070a0fe75716b479",
-					"jsonFile" : "target-STM32_Drivers-Debug-8eab9577a8b324b84b04.json",
+					"jsonFile" : "target-STM32_Drivers-Debug-ee6360999a016708df31.json",
 					"name" : "STM32_Drivers",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 0,
 					"id" : "nav_f405_test::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-nav_f405_test-Debug-0cf299b9cd280c553b8d.json",
+					"jsonFile" : "target-nav_f405_test-Debug-68d74919d84e7c5dfb2f.json",
 					"name" : "nav_f405_test",
 					"projectIndex" : 0
 				}
@@ -95,8 +95,8 @@
 	"kind" : "codemodel",
 	"paths" : 
 	{
-		"build" : "C:/Users/Quang Huy Nugyen/Documents/nav_f405_test/nav_f405_test/build/Debug",
-		"source" : "C:/Users/Quang Huy Nugyen/Documents/nav_f405_test/nav_f405_test"
+		"build" : "C:/Users/Quang Huy Nugyen/Documents/CartePCB/nav_f405_test/nav_f405_test/build/Debug",
+		"source" : "C:/Users/Quang Huy Nugyen/Documents/CartePCB/nav_f405_test/nav_f405_test"
 	},
 	"version" : 
 	{
