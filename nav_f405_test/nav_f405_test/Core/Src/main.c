@@ -22,6 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "iim42652.h"
+#include "neo_m9n.h"
 #include <string.h>
 #include <stdio.h>
 /* USER CODE END Includes */
@@ -37,6 +38,16 @@
 /* ── IMU chip-select pin (PA4, manually driven as GPIO) ── */
 #define IMU_CS_PIN        GPIO_PIN_4
 #define IMU_CS_PORT       GPIOA
+
+/* GPS NEO-M9N SPI2 pins from the NAV schematic:
+ *   PB10 = SPI2_SCK, PC2 = SPI2_MISO, PC3 = SPI2_MOSI, PB12 = CS.
+ */
+#define GPS_CS_PIN        GPIO_PIN_12
+#define GPS_CS_PORT       GPIOB
+#define GPS_POLL_PERIOD_MS 20u
+#define GPS_POLL_BYTES      128u
+#define GPS_DEBUG_PERIOD_MS 500u
+#define IMU_DEBUG_UART_ENABLED 0u
 
 /* ── SPI3 slave packet format (NAV → COM) ── */
 #define NAV_PKT_HEADER    0xAAu
@@ -78,6 +89,11 @@ UART_HandleTypeDef huart6;
 static IIM42652_Handle_t imu;
 static IIM42652_Data_t   imu_data;
 
+/* NEO-M9N GPS over SPI2 */
+static SPI_HandleTypeDef hspi2;
+static NEO_M9N_Handle_t  gps;
+static NEO_M9N_Fix_t     gps_fix;
+
 /* Double-buffered SPI3 slave TX (ping-pong) */
 static uint8_t           spi3_tx_buf[2][NAV_PKT_SIZE];
 static volatile uint8_t  spi3_ready_idx = 0;  /* index of latest COMPLETE packet */
@@ -103,6 +119,7 @@ static void MX_SPI3_Init(void);
 static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
 static void NAV_PackSpiBuffer(uint8_t *buf, const IIM42652_Data_t *d, uint8_t status);
+static void MX_SPI2_GPS_Init(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -135,6 +152,58 @@ static void NAV_PackSpiBuffer(uint8_t *buf, const IIM42652_Data_t *d, uint8_t st
     for (int i = 0; i < 16; i++) chk ^= buf[i];
     buf[16] = chk;
     buf[17] = NAV_PKT_FOOTER;
+}
+
+/**
+ * @brief  Configure SPI2 for the NEO-M9N GPS module.
+ */
+static void MX_SPI2_GPS_Init(void)
+{
+    GPIO_InitTypeDef gpio = {0};
+
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+    __HAL_RCC_GPIOC_CLK_ENABLE();
+    __HAL_RCC_SPI2_CLK_ENABLE();
+
+    HAL_GPIO_WritePin(GPS_CS_PORT, GPS_CS_PIN, GPIO_PIN_SET);
+
+    gpio.Pin       = GPIO_PIN_10;
+    gpio.Mode      = GPIO_MODE_AF_PP;
+    gpio.Pull      = GPIO_NOPULL;
+    gpio.Speed     = GPIO_SPEED_FREQ_VERY_HIGH;
+    gpio.Alternate = GPIO_AF5_SPI2;
+    HAL_GPIO_Init(GPIOB, &gpio);
+
+    gpio.Pin       = GPIO_PIN_2 | GPIO_PIN_3;
+    gpio.Mode      = GPIO_MODE_AF_PP;
+    gpio.Pull      = GPIO_NOPULL;
+    gpio.Speed     = GPIO_SPEED_FREQ_VERY_HIGH;
+    gpio.Alternate = GPIO_AF5_SPI2;
+    HAL_GPIO_Init(GPIOC, &gpio);
+
+    gpio.Pin   = GPS_CS_PIN;
+    gpio.Mode  = GPIO_MODE_OUTPUT_PP;
+    gpio.Pull  = GPIO_PULLUP;
+    gpio.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    HAL_GPIO_Init(GPS_CS_PORT, &gpio);
+    HAL_GPIO_WritePin(GPS_CS_PORT, GPS_CS_PIN, GPIO_PIN_SET);
+
+    hspi2.Instance = SPI2;
+    hspi2.Init.Mode = SPI_MODE_MASTER;
+    hspi2.Init.Direction = SPI_DIRECTION_2LINES;
+    hspi2.Init.DataSize = SPI_DATASIZE_8BIT;
+    hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
+    hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
+    hspi2.Init.NSS = SPI_NSS_SOFT;
+    hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_64;
+    hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
+    hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
+    hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+    hspi2.Init.CRCPolynomial = 10;
+    if (HAL_SPI_Init(&hspi2) != HAL_OK)
+    {
+        Error_Handler();
+    }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -252,6 +321,10 @@ int main(void)
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 
+  MX_SPI2_GPS_Init();
+  NEO_M9N_Init(&gps, &hspi2, GPS_CS_PORT, GPS_CS_PIN);
+  HAL_UART_Transmit(&huart4, (uint8_t *)"GPS SPI READY\r\n", 15, HAL_MAX_DELAY);
+
   /* ── Reconfigure PA4 as GPIO output for manual IMU chip-select ── */
   {
       GPIO_InitTypeDef gpio = {0};
@@ -343,14 +416,27 @@ int main(void)
         }
     }
 
-    /* 3) Heartbeat LED (PB14) + debug UART every 500 ms */
+    /* 2c) Poll NEO-M9N GPS over SPI2. */
+    {
+        static uint32_t last_gps_poll = 0;
+        uint32_t now_gps = HAL_GetTick();
+        if (now_gps - last_gps_poll >= GPS_POLL_PERIOD_MS)
+        {
+            last_gps_poll = now_gps;
+            (void)NEO_M9N_Poll(&gps, &gps_fix, GPS_POLL_BYTES);
+            HAL_GPIO_WritePin(LED_C_NAV_GPIO_Port, LED_C_NAV_Pin,
+                              (gps_fix.valid != 0u) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+        }
+    }
+
+    /* 3) Debug UART every 10 ms (~100 Hz) — fast enough for calibration */
+    #if IMU_DEBUG_UART_ENABLED
     {
         static uint32_t last_print = 0;
         uint32_t now = HAL_GetTick();
-        if (now - last_print >= 500u)
+        if (now - last_print >= 10u)
         {
             last_print = now;
-            HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_14);
 
             int len = snprintf(uart_buf, sizeof(uart_buf),
                 "AX:%6d AY:%6d AZ:%6d GX:%6d GY:%6d GZ:%6d T:%d\r\n",
@@ -358,6 +444,57 @@ int main(void)
                 imu_data.gyro_x,  imu_data.gyro_y,  imu_data.gyro_z,
                 imu_data.temperature);
             HAL_UART_Transmit(&huart4, (uint8_t *)uart_buf, len, HAL_MAX_DELAY);
+        }
+    }
+    #endif
+
+    /* 3b) GPS debug UART once per second. */
+    {
+        static uint32_t last_gps_print = 0;
+        uint32_t now_gps_dbg = HAL_GetTick();
+        if (now_gps_dbg - last_gps_print >= GPS_DEBUG_PERIOD_MS)
+        {
+            int len;
+
+            last_gps_print = now_gps_dbg;
+            if (gps_fix.valid != 0u)
+            {
+                long lat = (long)gps_fix.latitude_e7;
+                long lon = (long)gps_fix.longitude_e7;
+                long alt = (long)gps_fix.altitude_cm;
+                long lat_abs = (lat < 0) ? -lat : lat;
+                long lon_abs = (lon < 0) ? -lon : lon;
+                long alt_abs = (alt < 0) ? -alt : alt;
+
+                len = snprintf(uart_buf, sizeof(uart_buf),
+                    "GPS FIX UTC:%s LAT:%c%ld.%07ld LON:%c%ld.%07ld SAT:%u ALT:%c%ld.%02ldm\r\n",
+                    gps_fix.utc_time,
+                    (lat < 0) ? '-' : '+', lat_abs / 10000000L, lat_abs % 10000000L,
+                    (lon < 0) ? '-' : '+', lon_abs / 10000000L, lon_abs % 10000000L,
+                    gps_fix.satellites,
+                    (alt < 0) ? '-' : '+', alt_abs / 100L, alt_abs % 100L);
+            }
+            else
+            {
+                len = snprintf(uart_buf, sizeof(uart_buf),
+                    "GPS NOFIX Q:%u SAT:%u BY:%lu NMEA:%lu\r\n",
+                    gps_fix.fix_quality, gps_fix.satellites,
+                    (unsigned long)gps.bytes_rx,
+                    (unsigned long)gps.sentences_rx);
+            }
+
+            HAL_UART_Transmit(&huart4, (uint8_t *)uart_buf, len, HAL_MAX_DELAY);
+        }
+    }
+
+    /* 4) Heartbeat LED (PB14) every 500 ms */
+    {
+        static uint32_t last_blink = 0;
+        uint32_t now_b = HAL_GetTick();
+        if (now_b - last_blink >= 500u)
+        {
+            last_blink = now_b;
+            HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_14);
         }
     }
 
